@@ -51,8 +51,12 @@ func _ready() -> void:
 	_icon_rect.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_icon_rect)
 
+	var lang: String = Locale.lang
+	var name_str: String = animal_data.get("name_" + lang, animal_data.get("name_en", animal_data.get("name", "")))
+	var clue_str: String = animal_data.get("clue_" + lang, animal_data.get("clue_en", animal_data.get("clue", "")))
+
 	var name_lbl: Label = Label.new()
-	name_lbl.text = animal_data.get("name", "")
+	name_lbl.text = name_str
 	name_lbl.add_theme_font_size_override("font_size", 19)
 	name_lbl.add_theme_color_override("font_color", C_NAME)
 	name_lbl.position = Vector2(110, 8)
@@ -60,7 +64,7 @@ func _ready() -> void:
 	add_child(name_lbl)
 
 	var clue_lbl: Label = Label.new()
-	clue_lbl.text = "「" + animal_data.get("clue", "") + "」"
+	clue_lbl.text = "「" + clue_str + "」"
 	clue_lbl.add_theme_font_size_override("font_size", 13)
 	clue_lbl.add_theme_color_override("font_color", C_CLUE)
 	clue_lbl.position = Vector2(110, 38)

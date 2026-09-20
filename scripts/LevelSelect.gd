@@ -9,17 +9,23 @@ const TOPBAR_BG: Color = Color(0.94, 0.90, 0.80)
 const ZOO_DATA: Array = [
 	{
 		"level": 0,
-		"name": "圣地亚哥动物园",
-		"location": "美国·加利福尼亚",
-		"animals": "猴子 · 兔子 · 河马 · 企鹅",
+		"name_en": "San Diego Zoo",
+		"name_zh": "圣地亚哥动物园",
+		"location_en": "San Diego, California, USA",
+		"location_zh": "美国·加利福尼亚",
+		"animals_en": "Monkey · Rabbit · Hippo · Penguin",
+		"animals_zh": "猴子 · 兔子 · 河马 · 企鹅",
 		"pos": Vector2(224, 260),
 		"color": Color(0.90, 0.48, 0.22),
 	},
 	{
 		"level": 1,
-		"name": "新加坡动物园",
-		"location": "新加坡",
-		"animals": "大熊猫 · 鹦鹉 · 蛇 · 猪",
+		"name_en": "Singapore Zoo",
+		"name_zh": "新加坡动物园",
+		"location_en": "Singapore",
+		"location_zh": "新加坡",
+		"animals_en": "Giant Panda · Parrot · Snake · Pig",
+		"animals_zh": "大熊猫 · 鹦鹉 · 蛇 · 猪",
 		"pos": Vector2(1009, 358),
 		"color": Color(0.24, 0.76, 0.48),
 	},
@@ -29,39 +35,39 @@ var _continents: Array[PackedVector2Array] = []
 var _hover_idx: int = -1
 var _anim_t: float = 0.0
 var _sound_btn: Button = null
+var _lang_btn: Button = null
+var _title_lbl: Label = null
+var _sub_lbl: Label = null
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	set_process(true)
 
+	Locale.language_changed.connect(_on_language_changed)
+
 	_continents = [
-		# North America
 		PackedVector2Array([
 			Vector2(50, 142), Vector2(170, 95), Vector2(350, 125),
 			Vector2(415, 170), Vector2(400, 250), Vector2(360, 285),
 			Vector2(330, 300), Vector2(360, 335), Vector2(255, 285),
 			Vector2(195, 230), Vector2(120, 175),
 		]),
-		# South America
 		PackedVector2Array([
 			Vector2(280, 350), Vector2(360, 340), Vector2(410, 390),
 			Vector2(410, 480), Vector2(385, 575), Vector2(330, 610),
 			Vector2(265, 575), Vector2(245, 490), Vector2(250, 380),
 		]),
-		# Europe
 		PackedVector2Array([
 			Vector2(530, 90), Vector2(640, 88), Vector2(690, 130),
 			Vector2(680, 185), Vector2(655, 220), Vector2(600, 235),
 			Vector2(555, 215), Vector2(530, 175), Vector2(526, 130),
 		]),
-		# Africa
 		PackedVector2Array([
 			Vector2(545, 240), Vector2(660, 235), Vector2(710, 275),
 			Vector2(720, 355), Vector2(700, 455), Vector2(650, 505),
 			Vector2(600, 518), Vector2(555, 495), Vector2(540, 415),
 			Vector2(535, 330), Vector2(540, 255),
 		]),
-		# Asia
 		PackedVector2Array([
 			Vector2(655, 90), Vector2(815, 85), Vector2(940, 98),
 			Vector2(1075, 130), Vector2(1145, 175), Vector2(1120, 250),
@@ -70,13 +76,11 @@ func _ready() -> void:
 			Vector2(715, 280), Vector2(680, 235), Vector2(658, 185),
 			Vector2(652, 130),
 		]),
-		# Australia
 		PackedVector2Array([
 			Vector2(935, 440), Vector2(1060, 432), Vector2(1105, 468),
 			Vector2(1100, 548), Vector2(1040, 572), Vector2(965, 565),
 			Vector2(922, 525), Vector2(920, 478),
 		]),
-		# Greenland
 		PackedVector2Array([
 			Vector2(385, 88), Vector2(475, 84), Vector2(510, 115),
 			Vector2(493, 175), Vector2(447, 195), Vector2(395, 175),
@@ -85,36 +89,64 @@ func _ready() -> void:
 	]
 
 	MusicManager.play("res://assets/audio/music_menu.ogg")
+	_build_ui()
 
-	var title: Label = Label.new()
-	title.text = "ZOODOKU"
-	title.add_theme_font_size_override("font_size", 46)
-	title.add_theme_color_override("font_color", Color(0.22, 0.16, 0.08))
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.position = Vector2(440, 12)
-	title.custom_minimum_size = Vector2(400, 0)
-	add_child(title)
+func _build_ui() -> void:
+	# Clear children except continents data (no children at scene start)
+	for child: Node in get_children():
+		remove_child(child)
+		child.queue_free()
 
-	var subtitle: Label = Label.new()
-	subtitle.text = "环游世界，拯救动物园！  点击地图上的标记进入关卡"
-	subtitle.add_theme_font_size_override("font_size", 14)
-	subtitle.add_theme_color_override("font_color", Color(0.45, 0.35, 0.20))
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle.position = Vector2(380, 66)
-	subtitle.custom_minimum_size = Vector2(520, 0)
-	add_child(subtitle)
+	_title_lbl = Label.new()
+	_title_lbl.text = "ZOODOKU"
+	_title_lbl.add_theme_font_size_override("font_size", 46)
+	_title_lbl.add_theme_color_override("font_color", Color(0.22, 0.16, 0.08))
+	_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title_lbl.position = Vector2(440, 12)
+	_title_lbl.custom_minimum_size = Vector2(400, 0)
+	add_child(_title_lbl)
+
+	_sub_lbl = Label.new()
+	_sub_lbl.text = Locale.t(
+		"Travel the World, Save the Zoo!  ·  Click a map marker to enter a level",
+		"环游世界，拯救动物园！　点击地图上的标记进入关卡"
+	)
+	_sub_lbl.add_theme_font_size_override("font_size", 14)
+	_sub_lbl.add_theme_color_override("font_color", Color(0.45, 0.35, 0.20))
+	_sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_sub_lbl.position = Vector2(320, 66)
+	_sub_lbl.custom_minimum_size = Vector2(640, 0)
+	add_child(_sub_lbl)
 
 	_sound_btn = Button.new()
-	_sound_btn.text = "♪ 音乐"
+	_sound_btn.text = (Locale.t("x Muted", "x 静音") if MusicManager.muted
+		else Locale.t("~ Music", "~ 音乐"))
 	_sound_btn.add_theme_font_size_override("font_size", 13)
-	_sound_btn.position = Vector2(1180, 18)
-	_sound_btn.custom_minimum_size = Vector2(82, 32)
+	_sound_btn.position = Vector2(1182, 18)
+	_sound_btn.custom_minimum_size = Vector2(80, 32)
 	_sound_btn.pressed.connect(_on_sound_pressed)
 	add_child(_sound_btn)
 
+	_lang_btn = Button.new()
+	_lang_btn.text = "中文" if Locale.lang == "en" else "EN"
+	_lang_btn.add_theme_font_size_override("font_size", 13)
+	_lang_btn.position = Vector2(1090, 18)
+	_lang_btn.custom_minimum_size = Vector2(80, 32)
+	_lang_btn.pressed.connect(_toggle_language)
+	add_child(_lang_btn)
+
+func _on_language_changed() -> void:
+	_build_ui()
+	queue_redraw()
+
 func _on_sound_pressed() -> void:
 	MusicManager.toggle_mute()
-	_sound_btn.text = "✕ 静音" if MusicManager.muted else "♪ 音乐"
+	if _sound_btn:
+		_sound_btn.text = (Locale.t("x Muted", "x 静音") if MusicManager.muted
+			else Locale.t("~ Music", "~ 音乐"))
+
+func _toggle_language() -> void:
+	Locale.set_language("zh" if Locale.lang == "en" else "en")
 
 func _process(delta: float) -> void:
 	_anim_t += delta
@@ -130,10 +162,15 @@ func _process(delta: float) -> void:
 	if new_hover != _hover_idx:
 		_hover_idx = new_hover
 
+func _zoo_text(zoo: Dictionary, key: String) -> String:
+	var lk: String = key + "_" + Locale.lang
+	if zoo.has(lk):
+		return zoo[lk]
+	return zoo.get(key + "_en", "")
+
 func _draw() -> void:
 	draw_rect(Rect2(0, 0, 1280, 720), MAP_OCEAN)
 
-	# Map graticule grid
 	for lon_i: int in 12:
 		var x: float = float(lon_i) / 12.0 * 1280.0
 		draw_line(Vector2(x, 0), Vector2(x, 720), MAP_GRID, 1.0)
@@ -141,7 +178,6 @@ func _draw() -> void:
 		var y: float = float(lat_i) / 6.0 * 720.0
 		draw_line(Vector2(0, y), Vector2(1280, y), MAP_GRID, 1.0)
 
-	# Continent shadows then fills
 	var shadow: Color = Color(0.0, 0.0, 0.0, 0.12)
 	for cont: PackedVector2Array in _continents:
 		var shifted: PackedVector2Array = PackedVector2Array()
@@ -155,7 +191,6 @@ func _draw() -> void:
 		outline.append(cont[0])
 		draw_polyline(outline, MAP_LAND_OUTLINE, 1.5, true)
 
-	# Zoo markers
 	for i: int in ZOO_DATA.size():
 		var zoo: Dictionary = ZOO_DATA[i]
 		var pos: Vector2 = zoo["pos"]
@@ -172,7 +207,7 @@ func _draw() -> void:
 		draw_circle(pos, dot_r * 0.42, Color(1.0, 1.0, 1.0, 0.85))
 
 		var font: Font = ThemeDB.fallback_font
-		var name_str: String = zoo["name"]
+		var name_str: String = _zoo_text(zoo, "name")
 		var lx: float = pos.x + 18.0
 		var ly: float = pos.y - 6.0
 		if pos.x > 900:
@@ -183,19 +218,16 @@ func _draw() -> void:
 		if is_hover:
 			_draw_zoo_card(pos, zoo)
 
-	# Top bar overlay
 	draw_rect(Rect2(0, 0, 1280, 90), Color(TOPBAR_BG.r, TOPBAR_BG.g, TOPBAR_BG.b, 0.88))
 	draw_line(Vector2(0, 90), Vector2(1280, 90), Color(0.72, 0.62, 0.44, 0.6), 1.5)
 
-	# Compass rose bottom-right
 	_draw_compass(Vector2(1215, 648), 28.0)
 
-	# Bottom credit
 	var font: Font = ThemeDB.fallback_font
 	draw_string(font, Vector2(12, 714), "Zoodoku · 2026", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.35))
 
 func _draw_zoo_card(pos: Vector2, zoo: Dictionary) -> void:
-	var card_w: float = 248.0
+	var card_w: float = 260.0
 	var card_h: float = 120.0
 	var cx: float = clamp(pos.x - card_w / 2.0, 8.0, 1272.0 - card_w)
 	var cy: float = pos.y - card_h - 24.0
@@ -208,10 +240,14 @@ func _draw_zoo_card(pos: Vector2, zoo: Dictionary) -> void:
 	draw_rect(Rect2(cx, cy, card_w, 7), zoo["color"])
 
 	var font: Font = ThemeDB.fallback_font
-	draw_string(font, Vector2(cx + 14, cy + 34), zoo["name"], HORIZONTAL_ALIGNMENT_LEFT, int(card_w - 20), 18, Color(0.20, 0.14, 0.06))
-	draw_string(font, Vector2(cx + 14, cy + 58), zoo["location"], HORIZONTAL_ALIGNMENT_LEFT, int(card_w - 20), 13, Color(0.50, 0.38, 0.22))
-	draw_string(font, Vector2(cx + 14, cy + 80), zoo["animals"], HORIZONTAL_ALIGNMENT_LEFT, int(card_w - 20), 12, Color(0.50, 0.38, 0.22))
-	draw_string(font, Vector2(cx + 14, cy + 104), "第 " + str(int(zoo["level"]) + 1) + " 关  ·  点击进入 →", HORIZONTAL_ALIGNMENT_LEFT, int(card_w - 20), 12, Color(0.72, 0.46, 0.16))
+	var lvl_num: int = int(zoo["level"]) + 1
+	var enter_str: String = Locale.t("Level " + str(lvl_num) + "  ·  Click to Enter →",
+		"第 " + str(lvl_num) + " 关  ·  点击进入 →")
+
+	draw_string(font, Vector2(cx + 14, cy + 34), _zoo_text(zoo, "name"), HORIZONTAL_ALIGNMENT_LEFT, int(card_w - 20), 18, Color(0.20, 0.14, 0.06))
+	draw_string(font, Vector2(cx + 14, cy + 58), _zoo_text(zoo, "location"), HORIZONTAL_ALIGNMENT_LEFT, int(card_w - 20), 13, Color(0.50, 0.38, 0.22))
+	draw_string(font, Vector2(cx + 14, cy + 80), _zoo_text(zoo, "animals"), HORIZONTAL_ALIGNMENT_LEFT, int(card_w - 20), 12, Color(0.50, 0.38, 0.22))
+	draw_string(font, Vector2(cx + 14, cy + 104), enter_str, HORIZONTAL_ALIGNMENT_LEFT, int(card_w - 20), 12, Color(0.72, 0.46, 0.16))
 
 func _draw_compass(center: Vector2, r: float) -> void:
 	draw_circle(center, r + 4, Color(0.60, 0.50, 0.34, 0.55))
