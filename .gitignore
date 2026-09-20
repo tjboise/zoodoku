@@ -1,0 +1,5 @@
+# Godot editor cache
+.godot/
+
+# Original asset pack (large, not game source)
+kenney_animal-pack/
