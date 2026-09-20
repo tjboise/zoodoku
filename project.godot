@@ -11,8 +11,13 @@ config_version=5
 [application]
 
 config/name="Zoodoku"
-run/main_scene="res://scenes/Zoodoku.tscn"
+run/main_scene="res://scenes/LevelSelect.tscn"
 config/features=PackedStringArray("4.7")
+
+[autoload]
+
+Global="*res://scripts/Global.gd"
+MusicManager="*res://scripts/MusicManager.gd"
 
 [display]
 

@@ -12,19 +12,19 @@ var _is_blocked: bool = false
 var _hovered: bool = false
 
 const AREA_COLOR: Array = [
-	Color(0.12, 0.40, 0.18),
-	Color(0.18, 0.46, 0.76),
-	Color(0.26, 0.62, 0.22),
+	Color(0.30, 0.56, 0.34),   # Forest - sage green
+	Color(0.36, 0.60, 0.82),   # Pond - sky blue
+	Color(0.52, 0.76, 0.36),   # Grassland - fresh green
 ]
 const AREA_COLOR_DARK: Array = [
-	Color(0.07, 0.24, 0.10),
-	Color(0.10, 0.28, 0.48),
-	Color(0.15, 0.38, 0.12),
+	Color(0.18, 0.34, 0.20),   # Forest dark
+	Color(0.22, 0.38, 0.54),   # Pond dark
+	Color(0.32, 0.50, 0.22),   # Grassland dark
 ]
 const OBJ_COLOR: Dictionary = {
-	"tree":   Color(0.08, 0.30, 0.10),
-	"rock":   Color(0.52, 0.48, 0.42),
-	"flower": Color(0.88, 0.38, 0.62),
+	"tree":   Color(0.12, 0.34, 0.14),
+	"rock":   Color(0.58, 0.52, 0.44),
+	"flower": Color(0.90, 0.40, 0.66),
 }
 
 const CELL_SIZE: float = 130.0
@@ -96,7 +96,8 @@ func _get_drag_data(_at: Vector2):
 		return null
 
 	var animal_data: Dictionary = {}
-	for a: Dictionary in game_node.ANIMALS:
+	var lv: Dictionary = game_node.LEVELS[game_node.current_level]
+	for a: Dictionary in lv["animals"]:
 		if a["id"] == placed_animal_id:
 			animal_data = a
 			break

@@ -1,7 +1,6 @@
 extends Control
 
 # ── Level definitions ─────────────────────────────────────────────────────────
-# area codes: 0=Forest  1=Pond  2=Grassland
 const LEVELS: Array = [
 	{
 		"level_name": "第 1 关：失踪的企鹅",
@@ -102,10 +101,20 @@ const LEVELS: Array = [
 const GRID_SIZE: int = 4
 
 const AREA_INFO: Array = [
-	{"name": "森林", "color": Color(0.12, 0.40, 0.18)},
-	{"name": "水塘", "color": Color(0.18, 0.46, 0.76)},
-	{"name": "草地", "color": Color(0.26, 0.62, 0.22)},
+	{"name": "森林", "color": Color(0.30, 0.56, 0.34)},
+	{"name": "水塘", "color": Color(0.36, 0.60, 0.82)},
+	{"name": "草地", "color": Color(0.52, 0.76, 0.36)},
 ]
+
+# Warm palette constants
+const C_BG: Color        = Color(0.95, 0.91, 0.81)
+const C_LEFT_BG: Color   = Color(0.88, 0.83, 0.71)
+const C_CARD_BG: Color   = Color(0.97, 0.93, 0.86)
+const C_BORDER: Color    = Color(0.72, 0.62, 0.44)
+const C_TEXT: Color      = Color(0.22, 0.16, 0.08)
+const C_TEXT2: Color     = Color(0.50, 0.38, 0.22)
+const C_ACCENT: Color    = Color(0.82, 0.50, 0.20)
+const C_SIDEBAR: Color   = Color(0.84, 0.78, 0.64)
 
 # ── State ────────────────────────────────────────────────────────────────────
 var current_level: int = 0
@@ -114,6 +123,7 @@ var animal_placements: Dictionary = {}
 var card_nodes: Dictionary = {}
 var _result_label: Label = null
 var _texture_cache: Dictionary = {}
+var _sound_btn: Button = null
 
 # ── Texture loader ────────────────────────────────────────────────────────────
 func _load_texture(res_path: String) -> Texture2D:
@@ -129,51 +139,129 @@ func _load_texture(res_path: String) -> Texture2D:
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 func _ready() -> void:
-	_load_level(0)
+	_load_level(Global.selected_level)
 
 func _load_level(idx: int) -> void:
 	current_level = idx
 	animal_placements = {}
 	card_nodes = {}
 	_result_label = null
+	_sound_btn = null
 
-	# Remove all existing children
 	var children: Array = get_children()
 	for child: Node in children:
 		remove_child(child)
 		child.queue_free()
 
 	grid_cells = []
+	MusicManager.play("res://assets/audio/music_game.ogg")
 	_build_ui()
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+func _warm_stylebox(bg: Color = C_CARD_BG, border: Color = C_BORDER, radius: int = 6) -> StyleBoxFlat:
+	var sb: StyleBoxFlat = StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.border_width_left = 2
+	sb.border_width_right = 2
+	sb.border_width_top = 2
+	sb.border_width_bottom = 2
+	sb.border_color = border
+	sb.corner_radius_top_left = radius
+	sb.corner_radius_top_right = radius
+	sb.corner_radius_bottom_left = radius
+	sb.corner_radius_bottom_right = radius
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 10
+	return sb
+
+func _style_button(btn: Button, bg: Color, fg: Color = Color.WHITE) -> void:
+	var sb: StyleBoxFlat = StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.corner_radius_top_left = 7
+	sb.corner_radius_top_right = 7
+	sb.corner_radius_bottom_left = 7
+	sb.corner_radius_bottom_right = 7
+	btn.add_theme_stylebox_override("normal", sb)
+	var sh: StyleBoxFlat = sb.duplicate()
+	sh.bg_color = bg.lightened(0.18)
+	btn.add_theme_stylebox_override("hover", sh)
+	var sp: StyleBoxFlat = sb.duplicate()
+	sp.bg_color = bg.darkened(0.15)
+	btn.add_theme_stylebox_override("pressed", sp)
+	btn.add_theme_color_override("font_color", fg)
+	btn.add_theme_color_override("font_hover_color", fg)
+	btn.add_theme_color_override("font_pressed_color", fg)
+
+func _sidebar_btn_style(btn: Button) -> void:
+	var sb: StyleBoxFlat = StyleBoxFlat.new()
+	sb.bg_color = Color(0.76, 0.70, 0.56)
+	sb.corner_radius_top_left = 6
+	sb.corner_radius_top_right = 6
+	sb.corner_radius_bottom_left = 6
+	sb.corner_radius_bottom_right = 6
+	btn.add_theme_stylebox_override("normal", sb)
+	var sh: StyleBoxFlat = sb.duplicate()
+	sh.bg_color = Color(0.84, 0.78, 0.64)
+	btn.add_theme_stylebox_override("hover", sh)
+	var sp: StyleBoxFlat = sb.duplicate()
+	sp.bg_color = Color(0.64, 0.58, 0.44)
+	btn.add_theme_stylebox_override("pressed", sp)
+	btn.add_theme_color_override("font_color", C_TEXT)
+	btn.add_theme_color_override("font_hover_color", C_TEXT)
+	btn.add_theme_color_override("font_pressed_color", C_TEXT)
 
 # ── UI builder ────────────────────────────────────────────────────────────────
 func _build_ui() -> void:
 	var lv: Dictionary = LEVELS[current_level]
 
-	# Background
+	# Main background
 	var bg: ColorRect = ColorRect.new()
-	bg.color = Color(0.10, 0.12, 0.09)
+	bg.color = C_BG
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(bg)
 
-	# ── Left panel ──────────────────────────────────────────────────────────
+	const SIDEBAR_X: int = 1200
+	const LEFT_W: int = 392
+	const RIGHT_AREA_W: int = SIDEBAR_X - LEFT_W  # 808
+
+	const CELL_S: int = 130
+	const GAP: int = 4
+	const GRID_PX: int = GRID_SIZE * CELL_S + (GRID_SIZE - 1) * GAP  # 532
+	const GRID_X: int = LEFT_W + (RIGHT_AREA_W - GRID_PX) / 2  # 530
+
+	# ── Left panel background ──────────────────────────────────────────────
+	var left_bg: ColorRect = ColorRect.new()
+	left_bg.color = C_LEFT_BG
+	left_bg.position = Vector2(0, 0)
+	left_bg.size = Vector2(LEFT_W, 720)
+	left_bg.mouse_filter = Control.MOUSE_FILTER_PASS
+	add_child(left_bg)
+
+	var left_border: ColorRect = ColorRect.new()
+	left_border.color = C_BORDER
+	left_border.position = Vector2(LEFT_W, 0)
+	left_border.size = Vector2(2, 720)
+	left_border.mouse_filter = Control.MOUSE_FILTER_PASS
+	add_child(left_border)
+
+	# ── Left panel content ─────────────────────────────────────────────────
 	var left: VBoxContainer = VBoxContainer.new()
 	left.position = Vector2(14, 14)
-	left.custom_minimum_size = Vector2(385, 700)
-	left.add_theme_constant_override("separation", 10)
+	left.custom_minimum_size = Vector2(LEFT_W - 22, 700)
+	left.add_theme_constant_override("separation", 9)
 	add_child(left)
 
-	# Level name
 	var level_lbl: Label = Label.new()
 	level_lbl.text = lv["level_name"]
-	level_lbl.add_theme_font_size_override("font_size", 26)
-	level_lbl.add_theme_color_override("font_color", Color(0.95, 0.85, 0.35))
+	level_lbl.add_theme_font_size_override("font_size", 24)
+	level_lbl.add_theme_color_override("font_color", Color(0.62, 0.38, 0.10))
 	left.add_child(level_lbl)
 
-	# Story panel
 	var story_panel: PanelContainer = PanelContainer.new()
-	story_panel.custom_minimum_size = Vector2(385, 0)
+	story_panel.add_theme_stylebox_override("panel", _warm_stylebox())
 	left.add_child(story_panel)
 
 	var story_vb: VBoxContainer = VBoxContainer.new()
@@ -182,21 +270,22 @@ func _build_ui() -> void:
 
 	var story_head: Label = Label.new()
 	story_head.text = "• 案情"
-	story_head.add_theme_font_size_override("font_size", 14)
-	story_head.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+	story_head.add_theme_font_size_override("font_size", 13)
+	story_head.add_theme_color_override("font_color", C_TEXT2)
 	story_vb.add_child(story_head)
 
 	var story_text: Label = Label.new()
 	story_text.text = lv["story"]
 	story_text.add_theme_font_size_override("font_size", 14)
-	story_text.add_theme_color_override("font_color", Color(0.85, 0.88, 0.82))
+	story_text.add_theme_color_override("font_color", C_TEXT)
 	story_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	story_text.custom_minimum_size = Vector2(350, 0)
 	story_vb.add_child(story_text)
 
 	var cards_header: Label = Label.new()
 	cards_header.text = "• 动物的证词（拖到右边格子放置）"
-	cards_header.add_theme_font_size_override("font_size", 14)
-	cards_header.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+	cards_header.add_theme_font_size_override("font_size", 13)
+	cards_header.add_theme_color_override("font_color", C_TEXT2)
 	left.add_child(cards_header)
 
 	var animals: Array = lv["animals"]
@@ -208,25 +297,17 @@ func _build_ui() -> void:
 	var hint: Label = Label.new()
 	hint.text = "提示：右键点击格子可移除动物"
 	hint.add_theme_font_size_override("font_size", 12)
-	hint.add_theme_color_override("font_color", Color(0.5, 0.55, 0.5))
+	hint.add_theme_color_override("font_color", Color(0.55, 0.44, 0.28))
 	left.add_child(hint)
 
-	# ── Right panel / grid ──────────────────────────────────────────────────
-	var cell_s: int = 130
-	var gap: int = 4
-	var grid_px: int = GRID_SIZE * cell_s + (GRID_SIZE - 1) * gap
-
-	var right_x: int = 410
-	var right_w: int = 1280 - right_x
-	var grid_x: int = right_x + (right_w - grid_px) / 2
-
-	_build_legend(grid_x, 20)
+	# ── Grid area ──────────────────────────────────────────────────────────
+	_build_legend(GRID_X, 18)
 
 	var grid: GridContainer = GridContainer.new()
 	grid.columns = GRID_SIZE
-	grid.add_theme_constant_override("h_separation", gap)
-	grid.add_theme_constant_override("v_separation", gap)
-	grid.position = Vector2(grid_x, 60)
+	grid.add_theme_constant_override("h_separation", GAP)
+	grid.add_theme_constant_override("v_separation", GAP)
+	grid.position = Vector2(GRID_X, 58)
 	add_child(grid)
 
 	grid_cells = []
@@ -238,22 +319,79 @@ func _build_ui() -> void:
 			row_arr.append(cell)
 		grid_cells.append(row_arr)
 
-	var btn_x: int = grid_x + (grid_px - 200) / 2
 	var submit_btn: Button = Button.new()
-	submit_btn.text = "提交答案"
-	submit_btn.add_theme_font_size_override("font_size", 20)
-	submit_btn.custom_minimum_size = Vector2(200, 48)
-	submit_btn.position = Vector2(btn_x, 620)
+	submit_btn.text = "✓  提交答案"
+	submit_btn.add_theme_font_size_override("font_size", 19)
+	submit_btn.custom_minimum_size = Vector2(220, 48)
+	submit_btn.position = Vector2(GRID_X + (GRID_PX - 220) / 2, 614)
 	submit_btn.pressed.connect(_check_solution)
+	_style_button(submit_btn, C_ACCENT)
 	add_child(submit_btn)
 
 	_result_label = Label.new()
-	_result_label.add_theme_font_size_override("font_size", 17)
-	_result_label.position = Vector2(grid_x, 678)
-	_result_label.custom_minimum_size = Vector2(grid_px, 40)
+	_result_label.add_theme_font_size_override("font_size", 16)
+	_result_label.position = Vector2(GRID_X, 672)
+	_result_label.custom_minimum_size = Vector2(GRID_PX, 40)
 	_result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_result_label)
+
+	# ── Sidebar ────────────────────────────────────────────────────────────
+	_build_sidebar(SIDEBAR_X)
+
+func _build_sidebar(sx: int) -> void:
+	var sb_bg: ColorRect = ColorRect.new()
+	sb_bg.color = C_SIDEBAR
+	sb_bg.position = Vector2(sx, 0)
+	sb_bg.size = Vector2(1280 - sx, 720)
+	sb_bg.mouse_filter = Control.MOUSE_FILTER_PASS
+	add_child(sb_bg)
+
+	var border: ColorRect = ColorRect.new()
+	border.color = C_BORDER
+	border.position = Vector2(sx, 0)
+	border.size = Vector2(2, 720)
+	border.mouse_filter = Control.MOUSE_FILTER_PASS
+	add_child(border)
+
+	var btn_w: int = 72
+	var btn_x: int = sx + 4
+
+	var back_btn: Button = Button.new()
+	back_btn.text = "←\n返回"
+	back_btn.add_theme_font_size_override("font_size", 13)
+	back_btn.position = Vector2(btn_x, 12)
+	back_btn.custom_minimum_size = Vector2(btn_w, 58)
+	back_btn.pressed.connect(_go_back_to_map)
+	_sidebar_btn_style(back_btn)
+	add_child(back_btn)
+
+	var help_btn: Button = Button.new()
+	help_btn.text = "?\n规则"
+	help_btn.add_theme_font_size_override("font_size", 13)
+	help_btn.position = Vector2(btn_x, 88)
+	help_btn.custom_minimum_size = Vector2(btn_w, 58)
+	help_btn.pressed.connect(_show_how_to_play)
+	_sidebar_btn_style(help_btn)
+	add_child(help_btn)
+
+	var about_btn: Button = Button.new()
+	about_btn.text = "i\n关于"
+	about_btn.add_theme_font_size_override("font_size", 13)
+	about_btn.position = Vector2(btn_x, 164)
+	about_btn.custom_minimum_size = Vector2(btn_w, 58)
+	about_btn.pressed.connect(_show_about)
+	_sidebar_btn_style(about_btn)
+	add_child(about_btn)
+
+	_sound_btn = Button.new()
+	_sound_btn.text = "✕\n静音" if MusicManager.muted else "♪\n音乐"
+	_sound_btn.add_theme_font_size_override("font_size", 13)
+	_sound_btn.position = Vector2(btn_x, 240)
+	_sound_btn.custom_minimum_size = Vector2(btn_w, 58)
+	_sound_btn.pressed.connect(_toggle_sound)
+	_sidebar_btn_style(_sound_btn)
+	add_child(_sound_btn)
 
 func _build_legend(gx: int, gy: int) -> void:
 	var hb: HBoxContainer = HBoxContainer.new()
@@ -263,12 +401,12 @@ func _build_legend(gx: int, gy: int) -> void:
 	for info: Dictionary in AREA_INFO:
 		var swatch: ColorRect = ColorRect.new()
 		swatch.color = info["color"]
-		swatch.custom_minimum_size = Vector2(18, 18)
+		swatch.custom_minimum_size = Vector2(16, 16)
 		hb.add_child(swatch)
 		var lbl: Label = Label.new()
 		lbl.text = info["name"] + "   "
 		lbl.add_theme_font_size_override("font_size", 13)
-		lbl.add_theme_color_override("font_color", Color(0.85, 0.88, 0.85))
+		lbl.add_theme_color_override("font_color", C_TEXT2)
 		hb.add_child(lbl)
 
 func _make_animal_card(animal: Dictionary) -> Control:
@@ -373,7 +511,7 @@ func _check_solution() -> void:
 
 	if animal_placements.size() < animals.size():
 		_result_label.text = "还有动物没放置！请把所有动物都放到格子里。"
-		_result_label.add_theme_color_override("font_color", Color(1.0, 0.75, 0.2))
+		_result_label.add_theme_color_override("font_color", Color(0.78, 0.50, 0.10))
 		return
 
 	var correct: bool = true
@@ -390,27 +528,127 @@ func _check_solution() -> void:
 		_show_win_screen()
 	else:
 		_result_label.text = "有些动物的位置不对，再想想看！"
-		_result_label.add_theme_color_override("font_color", Color(0.95, 0.38, 0.32))
+		_result_label.add_theme_color_override("font_color", Color(0.82, 0.28, 0.22))
+
+# ── Sidebar actions ───────────────────────────────────────────────────────────
+func _go_back_to_map() -> void:
+	get_tree().change_scene_to_file("res://scenes/LevelSelect.tscn")
+
+func _toggle_sound() -> void:
+	MusicManager.toggle_mute()
+	if _sound_btn:
+		_sound_btn.text = "✕\n静音" if MusicManager.muted else "♪\n音乐"
+
+func _show_how_to_play() -> void:
+	_show_modal_popup("游戏规则", (
+		"目标\n把所有动物放到正确的格子里！\n\n"
+		+ "基本规则\n"
+		+ "• 每行、每列只能有一只动物\n"
+		+ "• 根据动物说的话找出它们的位置\n\n"
+		+ "区域颜色\n"
+		+ "• 深绿色 = 森林\n"
+		+ "• 蓝色 = 水塘\n"
+		+ "• 浅绿色 = 草地\n\n"
+		+ "操作方法\n"
+		+ "• 把左边的动物卡片拖到右边的格子里\n"
+		+ "• 右键点击格子可移除动物\n"
+		+ "• 放好所有动物后点击"提交答案"\n\n"
+		+ "线索词汇\n"
+		+ "• "在X旁边" = 与X直接相邻（同区域内）\n"
+		+ "• "在X的北/南边" = 比X更靠上/下的行\n"
+		+ "• "在X的东/西边" = 比X更靠右/左的列"
+	), "知道了！")
+
+func _show_about() -> void:
+	_show_modal_popup("关于 Zoodoku", (
+		"Zoodoku · 动物数独\n\n"
+		+ "一款以动物为主题的逻辑推理游戏。\n"
+		+ "根据动物们的证词，推断出每只\n"
+		+ "动物在格子里的正确位置。\n\n"
+		+ "玩法灵感来自 Murdoku。\n"
+		+ "动物素材来自 Kenney Animal Pack。\n\n"
+		+ "把 .ogg 音乐文件放到\n"
+		+ "assets/audio/ 文件夹即可启用音乐：\n"
+		+ "• music_menu.ogg — 选关界面音乐\n"
+		+ "• music_game.ogg — 游戏内音乐"
+	), "关闭")
+
+func _show_modal_popup(title_str: String, body_str: String, close_text: String) -> void:
+	var overlay: Control = Control.new()
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.z_index = 100
+	add_child(overlay)
+
+	var dim: ColorRect = ColorRect.new()
+	dim.color = Color(0.0, 0.0, 0.0, 0.62)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_PASS
+	overlay.add_child(dim)
+
+	var panel: PanelContainer = PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", _warm_stylebox(C_CARD_BG, C_BORDER, 10))
+	panel.custom_minimum_size = Vector2(460, 0)
+	panel.position = Vector2(410, 80)
+	overlay.add_child(panel)
+
+	var vb: VBoxContainer = VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 14)
+	panel.add_child(vb)
+
+	var sp1: Control = Control.new()
+	sp1.custom_minimum_size = Vector2(0, 4)
+	vb.add_child(sp1)
+
+	var title: Label = Label.new()
+	title.text = title_str
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color(0.62, 0.38, 0.10))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(title)
+
+	var sep: HSeparator = HSeparator.new()
+	vb.add_child(sep)
+
+	var body: Label = Label.new()
+	body.text = body_str
+	body.add_theme_font_size_override("font_size", 14)
+	body.add_theme_color_override("font_color", C_TEXT)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size = Vector2(420, 0)
+	vb.add_child(body)
+
+	var close_btn: Button = Button.new()
+	close_btn.text = close_text
+	close_btn.add_theme_font_size_override("font_size", 15)
+	close_btn.custom_minimum_size = Vector2(120, 38)
+	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	close_btn.pressed.connect(overlay.queue_free)
+	_style_button(close_btn, C_ACCENT)
+	vb.add_child(close_btn)
+
+	var sp2: Control = Control.new()
+	sp2.custom_minimum_size = Vector2(0, 4)
+	vb.add_child(sp2)
 
 # ── Win screen ────────────────────────────────────────────────────────────────
 func _show_win_screen() -> void:
 	var lv: Dictionary = LEVELS[current_level]
 	var is_last: bool = (current_level + 1 >= LEVELS.size())
 
-	# Full-screen dim overlay
 	var overlay: Control = Control.new()
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(overlay)
 
 	var dim: ColorRect = ColorRect.new()
-	dim.color = Color(0.0, 0.0, 0.0, 0.72)
+	dim.color = Color(0.0, 0.0, 0.0, 0.68)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_PASS
 	overlay.add_child(dim)
 
-	# Center panel
 	var panel: PanelContainer = PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", _warm_stylebox(C_CARD_BG, C_BORDER, 12))
 	panel.custom_minimum_size = Vector2(520, 0)
 	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	panel.offset_left = -260
@@ -418,79 +656,81 @@ func _show_win_screen() -> void:
 	overlay.add_child(panel)
 
 	var vb: VBoxContainer = VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 18)
+	vb.add_theme_constant_override("separation", 16)
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	panel.add_child(vb)
 
-	# Spacer top
 	var sp1: Control = Control.new()
-	sp1.custom_minimum_size = Vector2(0, 8)
+	sp1.custom_minimum_size = Vector2(0, 6)
 	vb.add_child(sp1)
 
-	# "通关！"
 	var big: Label = Label.new()
 	big.text = "通关！"
 	big.add_theme_font_size_override("font_size", 52)
-	big.add_theme_color_override("font_color", Color(0.98, 0.88, 0.20))
+	big.add_theme_color_override("font_color", Color(0.82, 0.50, 0.12))
 	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(big)
 
-	# Level name
 	var lv_lbl: Label = Label.new()
 	lv_lbl.text = lv["level_name"] + " 完成"
-	lv_lbl.add_theme_font_size_override("font_size", 16)
-	lv_lbl.add_theme_color_override("font_color", Color(0.65, 0.72, 0.65))
+	lv_lbl.add_theme_font_size_override("font_size", 15)
+	lv_lbl.add_theme_color_override("font_color", C_TEXT2)
 	lv_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(lv_lbl)
 
-	# Win message
 	var msg: Label = Label.new()
 	msg.text = lv["win_text"]
-	msg.add_theme_font_size_override("font_size", 19)
-	msg.add_theme_color_override("font_color", Color(0.88, 0.93, 0.88))
+	msg.add_theme_font_size_override("font_size", 18)
+	msg.add_theme_color_override("font_color", C_TEXT)
 	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	msg.custom_minimum_size = Vector2(480, 0)
 	vb.add_child(msg)
 
-	# Separator
 	var sep: HSeparator = HSeparator.new()
 	vb.add_child(sep)
 
-	# Button row
 	var btn_row: HBoxContainer = HBoxContainer.new()
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	btn_row.add_theme_constant_override("separation", 24)
+	btn_row.add_theme_constant_override("separation", 16)
 	vb.add_child(btn_row)
 
 	var retry_btn: Button = Button.new()
 	retry_btn.text = "重玩本关"
-	retry_btn.add_theme_font_size_override("font_size", 18)
-	retry_btn.custom_minimum_size = Vector2(160, 48)
+	retry_btn.add_theme_font_size_override("font_size", 16)
+	retry_btn.custom_minimum_size = Vector2(140, 44)
 	retry_btn.pressed.connect(_load_level.bind(current_level))
+	_style_button(retry_btn, Color(0.60, 0.52, 0.38), C_TEXT)
 	btn_row.add_child(retry_btn)
 
-	if is_last:
-		var all_done: Label = Label.new()
-		all_done.text = "全部通关，你真厉害！"
-		all_done.add_theme_font_size_override("font_size", 18)
-		all_done.add_theme_color_override("font_color", Color(0.4, 0.95, 0.55))
-		all_done.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		vb.add_child(all_done)
-	else:
+	if not is_last:
 		var next_btn: Button = Button.new()
 		next_btn.text = "下一关 →"
-		next_btn.add_theme_font_size_override("font_size", 18)
-		next_btn.custom_minimum_size = Vector2(160, 48)
+		next_btn.add_theme_font_size_override("font_size", 16)
+		next_btn.custom_minimum_size = Vector2(140, 44)
 		next_btn.pressed.connect(_load_level.bind(current_level + 1))
+		_style_button(next_btn, C_ACCENT)
 		btn_row.add_child(next_btn)
+	else:
+		var all_done: Label = Label.new()
+		all_done.text = "全部通关，你真厉害！"
+		all_done.add_theme_font_size_override("font_size", 17)
+		all_done.add_theme_color_override("font_color", Color(0.25, 0.60, 0.30))
+		all_done.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vb.add_child(all_done)
 
-	# Spacer bottom
+	var map_btn: Button = Button.new()
+	map_btn.text = "← 返回地图"
+	map_btn.add_theme_font_size_override("font_size", 14)
+	map_btn.custom_minimum_size = Vector2(130, 40)
+	map_btn.pressed.connect(_go_back_to_map)
+	_style_button(map_btn, Color(0.44, 0.60, 0.76))
+	btn_row.add_child(map_btn)
+
 	var sp2: Control = Control.new()
-	sp2.custom_minimum_size = Vector2(0, 8)
+	sp2.custom_minimum_size = Vector2(0, 6)
 	vb.add_child(sp2)
 
-	# Pop-in animation
 	panel.pivot_offset = Vector2(260, 0)
 	panel.scale = Vector2(0.85, 0.85)
 	panel.modulate.a = 0.0
